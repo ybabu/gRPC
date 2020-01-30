@@ -11,11 +11,13 @@ namespace server
 {
    public class GreetingServiceImpl: GreetingServiceBase
     {
+        //Unary 
         public override Task<GreetingResponse> Greet(GreetingRequest request, ServerCallContext context)
         {
             string result = String.Format("Hello {0} {1}",request.Greeting.FirstName ,request.Greeting.LatsName );
             return Task.FromResult(new GreetingResponse() { Result = result });
         }
+        //Server Streaming
         public override  async Task GreetingManyTimes(GreetingManyTimesRequest request, IServerStreamWriter<GreetingManyTimesResponse> responseStream, ServerCallContext context)
         {
             Console.WriteLine("The Server recieved the equest:");
@@ -27,6 +29,18 @@ namespace server
             }
             
         }
+        //Client Streaming
+        public override async Task<LongGreetResponse> LongGreet(IAsyncStreamReader<LongGreetRequest> requestStream, ServerCallContext context)
+        {
+            string result = "";
+            while (await requestStream.MoveNext())
+            {
+                result += string.Format("Hello {0} {1} {2}", requestStream.Current.Greeting.FirstName, requestStream.Current.Greeting.LatsName, Environment.NewLine);
+            }
+
+            return new LongGreetResponse() { Result = result };
+        }
+
 
     }
 }

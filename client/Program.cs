@@ -64,7 +64,39 @@ namespace client
         //    Console.ReadKey();
         //}
 
-        //Client Stream
+        ////Client Stream
+        //static async Task Main(string[] args)
+        //{
+        //    Channel channel = new Channel(target, ChannelCredentials.Insecure);
+        //    await channel.ConnectAsync().ContinueWith((task) =>
+        //    {
+        //        if (task.Status == TaskStatus.RanToCompletion)
+        //            Console.WriteLine("The Client connected successfully");
+        //    });
+         
+        //    var client = new GreetingService.GreetingServiceClient(channel);
+        //    var greeting = new Greeting()
+        //    {
+        //        FirstName = "Yogi",
+        //        LatsName = "Babu"
+        //    };
+        //    var request = new LongGreetRequest() { Greeting = greeting };
+        //    var stream = client.LongGreet();
+        //    foreach (int i in Enumerable.Range(1, 10))
+        //    {
+        //        await stream.RequestStream.WriteAsync(request);
+        //    }
+        //    await stream.RequestStream.CompleteAsync();//request call complete then response
+
+        //    var response = await stream.ResponseAsync;
+        //    Console.WriteLine(response.Result);
+
+
+        //    channel.ShutdownAsync().Wait();
+        //    Console.ReadKey();
+        //}
+        
+        //Bi-Directional Streaming
         static async Task Main(string[] args)
         {
             Channel channel = new Channel(target, ChannelCredentials.Insecure);
@@ -73,27 +105,44 @@ namespace client
                 if (task.Status == TaskStatus.RanToCompletion)
                     Console.WriteLine("The Client connected successfully");
             });
-         
-            var client = new GreetingService.GreetingServiceClient(channel);
-            var greeting = new Greeting()
-            {
-                FirstName = "Yogi",
-                LatsName = "Babu"
-            };
-            var request = new LongGreetRequest() { Greeting = greeting };
-            var stream = client.LongGreet();
-            foreach (int i in Enumerable.Range(1, 10))
-            {
-                await stream.RequestStream.WriteAsync(request);
-            }
-            await stream.RequestStream.CompleteAsync();//request call complete then response
 
-            var response = await stream.ResponseAsync;
-            Console.WriteLine(response.Result);
+            var client = new GreetingService.GreetingServiceClient(channel);
+
+            await DOGreetEveryone(client);
 
 
             channel.ShutdownAsync().Wait();
             Console.ReadKey();
+        }
+        
+        public static async Task DOGreetEveryone(GreetingService.GreetingServiceClient client)
+        {
+            var stream = client.GreetitEveryone();
+            var responseReaderTask = Task.Run(async () =>
+             {
+               while (await stream.ResponseStream.MoveNext())
+                 {
+                     Console.WriteLine("Received :"+stream.ResponseStream.Current.Result);
+                 }
+             });
+
+            Greeting[] greetings =
+                {
+                new Greeting(){FirstName="abc",LatsName="asdfsdf"},
+                new Greeting(){FirstName="saf",LatsName="vxv"},
+                new Greeting(){FirstName="sdvgs",LatsName="sdgsd"},
+            };
+
+            foreach(var greeting in greetings )
+            {
+                Console.WriteLine("Sending :"+greeting.ToString() );
+                await stream.RequestStream.WriteAsync(new GreetEveryoneRequest()
+                { 
+                    Greeting=greeting 
+                });
+            }
+            await stream.RequestStream.CompleteAsync();
+            await responseReaderTask;
         }
     }
 }
